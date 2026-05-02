@@ -1,2 +1,5 @@
 # Python-SAT-Solver
-A SAT Solver made in Python, has both CDCL and DPLL implemented
+A SAT Solver made in Python, has both CDCL and DPLL implemented.
+
+Run it as:
+python Controller.py <path-to-file.cnf> <DPLL|CDCL>
