@@ -28,7 +28,7 @@ def run_cdcl(cnf_path: str) -> None:
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python controller.py <cnf_file> <DPLL|CDCL>")
+        print("Usage: python Controller.py <cnf_file> <DPLL|CDCL>")
         sys.exit(1)
 
     cnf_path = sys.argv[1]
