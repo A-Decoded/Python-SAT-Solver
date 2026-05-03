@@ -210,7 +210,8 @@ def _is_tautology(clause: DPLLClause) -> bool:
     Checks if a clause has the same variables which are opposite to each other in polarity.
     """
     for variable, i in enumerate(clause):
-        for other_variable, j in enumerate(clause[i + 1:], start=i + 1):
+        for other_variable_enum in enumerate(clause[i + 1:], start=i + 1):
+            other_variable = other_variable_enum[1]
             if variable == -other_variable:
                 return True
     return False

@@ -118,7 +118,7 @@ def convert_to_cdcl(clause_table: DPLLTable | DPLLClause) -> CDCLTable | CDCLCla
         return CDCLTable(clause_copy, clause_values)
 
     # Is this a DPLL Clause?
-    elif isinstance(clause_table[0], int):
+    if isinstance(clause_table[0], int):
         new_clause = list(map(lambda x: (x, None), clause_table))
         return new_clause
 

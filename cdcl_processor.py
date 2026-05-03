@@ -214,7 +214,7 @@ def _evaluate_clause(clause: CDCLClause) -> bool | None:
             variable_value is True
         ):  # If we find a singular True, it's a True evaluation.
             return True
-        elif variable_value is None:  # If we find a singular None, it cannot be False.
+        if variable_value is None:  # If we find a singular None, it cannot be False.
             false_flag = False
 
     return (
