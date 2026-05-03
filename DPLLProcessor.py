@@ -1,31 +1,31 @@
 import copy
 
-from Reader import prettyPrint
 from Types import DPLLTable, DPLLClause
 
 
-def DPLL(clausetable: DPLLTable, variables: int, starting: int) -> bool:
+def DPLL(clause_table: DPLLTable, variables: int, starting: int) -> bool:
     """
     The core of the DPLL algorithm.
     """
-    clausetable = _processVariable(clausetable, starting, abs(starting)/starting)
-    clausetable = _handleUnitClausesRecursive(clausetable)
-    clausetable = _handlePureLiterals(clausetable, variables)
+    clause_table = _process_variable(
+        clause_table, starting, abs(starting) / starting)
+    clause_table = _handle_unit_clauses_recursive(clause_table)
+    clause_table = _handle_pure_literals(clause_table, variables)
 
-    if evaluator(clausetable) is not None:
-        return evaluator(clausetable)
+    if evaluator(clause_table) is not None:
+        return evaluator(clause_table)
 
     else:
-        nextvalue = _getNextSizeValue(clausetable)
+        nextvalue = _get_next_size_value(clause_table)
         # nextvalue = _getNextValue(starting, clausetable)
-        return DPLL(copy.deepcopy(clausetable), variables, nextvalue) or DPLL(copy.deepcopy(clausetable), variables, -nextvalue)
+        return DPLL(copy.deepcopy(clause_table), variables, nextvalue) or DPLL(copy.deepcopy(clause_table), variables, -nextvalue)
 
 
-def evaluator(clausetable: DPLLTable) -> bool|None:
+def evaluator(clausetable: DPLLTable) -> bool | None:
     """
     Returns True if SAT, False if UNSAT, None if incomplete.
     """
-    if (not clausetable):
+    if not clausetable:
         return True
     for clause in clausetable:
         if len(clause) == 0:
@@ -33,56 +33,62 @@ def evaluator(clausetable: DPLLTable) -> bool|None:
     return None
 
 
-def DPLLpreProcessor(original_clausetable: DPLLTable, variables: int) -> bool|DPLLTable:
+def dpll_pre_processor(original_clause_table: DPLLTable, variables: int) -> bool | DPLLTable:
     """
     Recursively preprocesses the table. Handles pure literals, unit and tautological clauses.
     """
     # print("Preprocessing...")
 
     clausetable = []
-    for clause in original_clausetable:
+    for clause in original_clause_table:
         normalized = sorted(list(set(clause)))
         if normalized not in clausetable:                                       # Remove any duplicate clauses
             clausetable.append(normalized)
 
-    comparing_table = copy.deepcopy(clausetable)                                # Make a referential copy
+    # Make a referential copy
+    comparing_table = copy.deepcopy(clausetable)
 
-    comparing_table = _handleTautologies(comparing_table)
-    comparing_table = _handleUnitClausesRecursive(comparing_table)
-    comparing_table = _handlePureLiterals(comparing_table, variables)
-    comparing_table = _selfSubsumingResolutionRecursive(comparing_table)
-    comparing_table = _handleBlockedClauses(comparing_table)
+    comparing_table = _handle_tautologies(comparing_table)
+    comparing_table = _handle_unit_clauses_recursive(comparing_table)
+    comparing_table = _handle_pure_literals(comparing_table, variables)
+    comparing_table = _self_subsuming_resolution_recursive(comparing_table)
+    comparing_table = _handle_blocked_clauses(comparing_table)
 
     if evaluator(comparing_table) is not None:
         return evaluator(comparing_table)
 
-    if (comparing_table != clausetable):                                        # If the referential copy differs from what we have
-        return DPLLpreProcessor(comparing_table, variables)
+    # If the referential copy differs from what we have
+    if comparing_table != clausetable:
+        return dpll_pre_processor(comparing_table, variables)
 
     # print("Finished preprocessing")
     return comparing_table
 
 
-def _processVariable(clausetable: DPLLTable, variable: int, polarity: int) -> DPLLTable:
+def _process_variable(clause_table: DPLLTable, variable: int, polarity: int) -> DPLLTable:
     """
     Non-recursively handles a single variable with linear propagation.
     """
-    clausecopy = copy.deepcopy(clausetable)
-    for clause in clausetable:                                                  # We're doing a side-by-side evaluation against clausetable so there may be discrepancies
+    clause_copy = copy.deepcopy(clause_table)
+    # We're doing a side-by-side evaluation against clausetable so there may be discrepancies
+    for clause in clause_table:
         for literal in clause:
             if abs(literal) == abs(variable):
-                if polarity*abs(variable) == literal:                           # If this variable evaluates to true
+                # If this variable evaluates to true
+                if polarity * abs(variable) == literal:
                     # print("Removing", clause)
-                    clausecopy.remove(clause)                                   # Remove the clause              
+                    # Remove the clause
+                    clause_copy.remove(clause)
                 else:                                                           # If it evaluates to false
-                    if clause in clausecopy:
-                        clausecopy[clausecopy.index(clause)].remove(literal)    # Just remove the variable
+                    if clause in clause_copy:
+                        clause_copy[clause_copy.index(clause)].remove(
+                            literal)    # Just remove the variable
 
     # prettyPrint(clausecopy)
-    return clausecopy
+    return clause_copy
 
 
-def _handleBlockedClauses(clausetable: DPLLTable) -> DPLLTable:
+def _handle_blocked_clauses(clausetable: DPLLTable) -> DPLLTable:
     """
     Scans for clauses where a member literal has its opposite polarity present somewhere else in the table.
     And checks if all of those clauses can resolve to a tautology with the original clause.
@@ -90,25 +96,30 @@ def _handleBlockedClauses(clausetable: DPLLTable) -> DPLLTable:
     """
     clausecopy = copy.deepcopy(clausetable)
     for clause in clausetable:
-        if _isBlockedClause(clausetable, clause):
+        if _is_blocked_clause(clausetable, clause):
             if clause in clausecopy:
                 clausecopy.remove(clause)
-    if (clausecopy != clausetable):
-        return _handleBlockedClauses(clausecopy)
+    if clausecopy != clausetable:
+        return _handle_blocked_clauses(clausecopy)
     else:
         return clausetable
 
-def _isBlockedClause(clausetable: DPLLTable, clause: DPLLClause) -> bool:
-    for variable in clause:                                                     # There exists a variable in the clause
+
+def _is_blocked_clause(clausetable: DPLLTable, clause: DPLLClause) -> bool:
+    # There exists a variable in the clause
+    for variable in clause:
         otherClauseFound = False
         blockedDefault = True
         for other_clause in clausetable:                                        # For all other clauses
             if clause is other_clause:
                 continue
-            elif -variable in other_clause:                                     # Which have the opposite polarity of that variable in them
+            # Which have the opposite polarity of that variable in them
+            elif -variable in other_clause:
                 otherClauseFound = True
-                resolution = _makeResolution(clause, other_clause, variable)    # Such that their resolution
-                if not _isTautology(resolution):                                # Is a tautology
+                # Such that their resolution
+                resolution = _make_resolution(clause, other_clause, variable)
+                # Is a tautology
+                if not _is_tautology(resolution):
                     blockedDefault = False
                     break
         if blockedDefault and otherClauseFound:
@@ -117,17 +128,18 @@ def _isBlockedClause(clausetable: DPLLTable, clause: DPLLClause) -> bool:
     return False
 
 
-def _handleUnitClausesRecursive(clausetable: DPLLTable) -> DPLLTable:
+def _handle_unit_clauses_recursive(clausetable: DPLLTable) -> DPLLTable:
     """
     Wrapper to handle the unit clause function recursively.
     """
     clausecopy = copy.deepcopy(clausetable)
-    clausetable = _handleUnitClauses(clausetable)
-    if (clausecopy != clausetable):
-        return _handleUnitClausesRecursive(clausetable)
+    clausetable = _handle_unit_clauses(clausetable)
+    if clausecopy != clausetable:
+        return _handle_unit_clauses_recursive(clausetable)
     return clausetable
 
-def _handleUnitClauses(clausetable: DPLLTable) -> DPLLTable:
+
+def _handle_unit_clauses(clausetable: DPLLTable) -> DPLLTable:
     """
     Look for singular clauses and handle them.
     """
@@ -135,22 +147,23 @@ def _handleUnitClauses(clausetable: DPLLTable) -> DPLLTable:
         if len(clause) == 1:
             # print("Handling unit clause", clause)
             value = clause[0]
-            polarity = value/abs(value)
-            clausetable = _processVariable(clausetable, value, polarity)
+            polarity = value / abs(value)
+            clausetable = _process_variable(clausetable, value, polarity)
 
     return clausetable
 
 
-def _handlePureLiterals(clausetable: DPLLTable, variables: int) -> DPLLTable:
+def _handle_pure_literals(clausetable: DPLLTable, variables: int) -> DPLLTable:
     for variable in range(1, variables+1):
-        isPure, polarity = _isPureLiteral(clausetable, variable)
-        if (isPure):
+        isPure, polarity = _is_pure_literal(clausetable, variable)
+        if isPure:
             # print("Handling pure literal", variable)
-            clausetable = _processVariable(clausetable, variable, polarity)
+            clausetable = _process_variable(clausetable, variable, polarity)
 
     return clausetable
 
-def _isPureLiteral(clausetable: DPLLTable, variable: int) -> tuple[bool, int]:
+
+def _is_pure_literal(clausetable: DPLLTable, variable: int) -> tuple[bool, int]:
     """
     Checks if a variable in the clause table is pure.
     Returns 2 values, first is a boolean, second is +1 or -1 for the polarity of the variable, otherwise 0.
@@ -164,7 +177,8 @@ def _isPureLiteral(clausetable: DPLLTable, variable: int) -> tuple[bool, int]:
                         positive_flag_set = 1                       # This is only a positive
                     else:
                         positive_flag_set = -1                      # This is only a negative
-                elif (literal != variable*positive_flag_set):       # If this isn't the first encounter and there's opposite polarities
+                # If this isn't the first encounter and there's opposite polarities
+                elif literal != variable * positive_flag_set:
                     return (False, 0)
 
     if positive_flag_set != 0:                                      # If there were no encounters
@@ -173,17 +187,18 @@ def _isPureLiteral(clausetable: DPLLTable, variable: int) -> tuple[bool, int]:
         return (False, 0)
 
 
-def _handleTautologies(clausetable: DPLLTable) -> DPLLTable:
+def _handle_tautologies(clausetable: DPLLTable) -> DPLLTable:
     comparing_table = copy.deepcopy(clausetable)
     for clause in clausetable:
-        if _isTautology(clause):
+        if _is_tautology(clause):
             if clause in comparing_table:
                 # print("Removing tautological clause", clause)
                 comparing_table.remove(clause)
 
     return comparing_table
 
-def _isTautology(clause: DPLLClause) -> bool:
+
+def _is_tautology(clause: DPLLClause) -> bool:
     """
     Checks if a clause has the same variables which are opposite to each other in polarity.
     """
@@ -194,7 +209,7 @@ def _isTautology(clause: DPLLClause) -> bool:
     return False
 
 
-def _selfSubsumingResolutionRecursive(clausetable: DPLLTable) -> DPLLTable:
+def _self_subsuming_resolution_recursive(clausetable: DPLLTable) -> DPLLTable:
     """
     Finds clauses which have only one common variable of opposite polarity, and resolves them.
     Whichever clause is a superset of the resolution gets reduced to the resolution itself.
@@ -202,20 +217,23 @@ def _selfSubsumingResolutionRecursive(clausetable: DPLLTable) -> DPLLTable:
     clausecopy = copy.deepcopy(clausetable)
     for i in range(len(clausetable)):
         for j in range(i, len(clausetable)):
-            resolvable, value = _canBeResolved(clausetable[i], clausetable[j])
+            resolvable, value = _can_be_resolved(
+                clausetable[i], clausetable[j])
             if resolvable:
-                resolvedClause = _resolveClauseSubsets(clausetable[i], clausetable[j], value)
+                resolvedClause = _resolve_clause_subsets(
+                    clausetable[i], clausetable[j], value)
                 if resolvedClause is not None:
-                    if (resolvedClause[0] in clausecopy):
+                    if resolvedClause[0] in clausecopy:
                         clausecopy.remove(resolvedClause[0])
                         clausecopy.append(resolvedClause[1])
 
-    if (clausecopy != clausetable):
-        return _selfSubsumingResolutionRecursive(clausecopy)
+    if clausecopy != clausetable:
+        return _self_subsuming_resolution_recursive(clausecopy)
     else:
         return clausetable
 
-def _canBeResolved(clause1: DPLLClause, clause2: DPLLClause) -> tuple[bool, int]:
+
+def _can_be_resolved(clause1: DPLLClause, clause2: DPLLClause) -> tuple[bool, int]:
     """
     Checks if 2 clauses are resolvable, and returns the common value if they are.
     """
@@ -230,47 +248,50 @@ def _canBeResolved(clause1: DPLLClause, clause2: DPLLClause) -> tuple[bool, int]
                 return False, 0
     return commonValueFound, commonValue
 
-def _resolveClauseSubsets(clause1: DPLLClause, clause2: DPLLClause, value: int) -> tuple[DPLLClause, DPLLClause]:
+
+def _resolve_clause_subsets(clause1: DPLLClause, clause2: DPLLClause, value: int) -> tuple[DPLLClause, DPLLClause]:
     """
     Resolves 2 clauses and checks if the resolution is a subset of the opening clauses.
     If it is, it returns [clause-to-replace], [resolution]
     """
-    resolvedClause = _makeResolution(clause1, clause2, value)
+    resolved_clause = _make_resolution(clause1, clause2, value)
 
-    if set(resolvedClause) <= set(clause1):
+    if set(resolved_clause) <= set(clause1):
         # print("Resolved", clause1, "from", clause1, ",", clause2, "to", resolvedClause)
-        return clause1, resolvedClause
-    elif set(resolvedClause) <= set(clause2):
+        return clause1, resolved_clause
+    elif set(resolved_clause) <= set(clause2):
         # print("Resolved", clause2, "from", clause1, ",", clause2, "to", resolvedClause)
-        return clause2, resolvedClause
+        return clause2, resolved_clause
     return None
 
-def _makeResolution(clause1: DPLLClause, clause2: DPLLClause, valueToRemove: int) -> DPLLClause:
+
+def _make_resolution(clause1: DPLLClause, clause2: DPLLClause, value_to_remove: int) -> DPLLClause:
     """
     Makes a resolution from 2 clauses and removes the passed value.
     """
     resolvedClause = sorted(set(clause1 + clause2))
-    resolvedClause.remove(valueToRemove)
-    resolvedClause.remove(-valueToRemove)
+    resolvedClause.remove(value_to_remove)
+    resolvedClause.remove(-value_to_remove)
 
     return resolvedClause
 
 
-def _getNextSizeValue(clausetable: DPLLTable) -> int:
+def _get_next_size_value(clausetable: DPLLTable) -> int:
     """
     Heuristic to get the next value present in the CNF in the smallest clause.
     """
     clausesorted = sorted(clausetable, key=len)
     return clausesorted[0][0]
 
-def _getNextValue(currentValue: int, clausetable: DPLLTable) -> int:
+
+def _get_next_value(current_value: int, clause_table: DPLLTable) -> int:
     """
     Heuristic to get the next available value present in the CNF.
     """
-    check_value = abs(currentValue) + 1
-    for clause in clausetable:
+    check_value = abs(current_value) + 1
+    for clause in clause_table:
         for variable in clause:
             if check_value == abs(variable):
                 return check_value
 
-    return _getNextValue(check_value, clausetable)
+    return _get_next_value(check_value, clause_table)

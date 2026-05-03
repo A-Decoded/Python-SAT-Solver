@@ -2,14 +2,14 @@ import os
 import sys
 import time
 
-from Reader import extractNumbers, convertToCDCL
-from DPLLProcessor import DPLL, DPLLpreProcessor
+from Reader import extract_numbers, convert_to_cdcl
+from DPLLProcessor import DPLL, dpll_pre_processor
 from CDCLProcessor import CDCL
 
 
 def run_dpll(cnf_path: str) -> None:
-    variables, clauses, clausetable = extractNumbers(cnf_path)
-    clausetable = DPLLpreProcessor(clausetable, variables)
+    variables, clauses, clausetable = extract_numbers(cnf_path)
+    clausetable = dpll_pre_processor(clausetable, variables)
     if not isinstance(clausetable, bool):
         print("SAT") if DPLL(clausetable, variables, 1) else print("UNSAT")
     else:
@@ -17,10 +17,10 @@ def run_dpll(cnf_path: str) -> None:
 
 
 def run_cdcl(cnf_path: str) -> None:
-    variables, clauses, clausetable = extractNumbers(cnf_path)
-    clausetable = DPLLpreProcessor(clausetable, variables)
+    variables, clauses, clausetable = extract_numbers(cnf_path)
+    clausetable = dpll_pre_processor(clausetable, variables)
     if not isinstance(clausetable, bool):
-        clausetable = convertToCDCL(clausetable)
+        clausetable = convert_to_cdcl(clausetable)
         print("SAT") if CDCL(clausetable, []) else print("UNSAT")
     else:
         print("SAT") if clausetable else print("UNSAT")
