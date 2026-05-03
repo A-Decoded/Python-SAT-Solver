@@ -18,7 +18,7 @@ def extract_numbers(filepath: str) -> tuple[int, int, DPLLTable]:
             if line.startswith("c") or line.startswith("%") or line.startswith("0") or line.startswith("\n"):
                 continue
             # Is this the p cnf line?
-            elif line.startswith("p"):
+            if line.startswith("p"):
                 # Get the number of variables
                 variables = int(line_variables[2])
                 # Get the number of clauses
@@ -65,7 +65,7 @@ def convert_to_dpll(clause_table: CDCLTable | CDCLClause) -> DPLLTable | DPLLCla
                     # Safety flag to avoid manipulating clauses which turn out to be True
                     found_true = True
                     break
-                elif variable_value is False:
+                if variable_value is False:
                     variable_sets_to_remove.append(variable_set)
                 else:
                     variable_sets_to_remove.append(variable_set)
@@ -81,7 +81,7 @@ def convert_to_dpll(clause_table: CDCLTable | CDCLClause) -> DPLLTable | DPLLCla
             variable_name, variable_value = variable_set
             if variable_value is True:
                 return []
-            elif variable_value is False:
+            if variable_value is False:
                 clauses_to_remove.append(variable_set)
             else:
                 clauses_to_remove.append(variable_set)

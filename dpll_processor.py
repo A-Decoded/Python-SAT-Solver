@@ -15,12 +15,11 @@ def dpll(clause_table: DPLLTable, variables: int, starting: int) -> bool:
     if evaluator(clause_table) is not None:
         return evaluator(clause_table)
 
-    else:
-        next_value = _get_next_size_value(clause_table)
-        # nextvalue = _get_next_value(starting, clause_table)
-        return dpll(copy.deepcopy(clause_table), variables, next_value) or dpll(
-            copy.deepcopy(clause_table), variables, -next_value
-        )
+    next_value = _get_next_size_value(clause_table)
+    # nextvalue = _get_next_value(starting, clause_table)
+    return dpll(copy.deepcopy(clause_table), variables, next_value) or dpll(
+        copy.deepcopy(clause_table), variables, -next_value
+    )
 
 
 def evaluator(clause_table: DPLLTable) -> bool | None:
@@ -109,25 +108,25 @@ def _handle_blocked_clauses(clause_table: DPLLTable) -> DPLLTable:
                 clause_copy.remove(clause)
     if clause_copy != clause_table:
         return _handle_blocked_clauses(clause_copy)
-    else:
-        return clause_table
+
+    return clause_table
 
 
 def _is_blocked_clause(clause_table: DPLLTable, clause: DPLLClause) -> bool:
-    for variable in clause:  # There exists a variable in the clause
+    for variable in clause:                         # There exists a variable in the clause
         other_clause_found = False
         blocked_default = True
-        for other_clause in clause_table:  # For all other clauses
+        for other_clause in clause_table:           # For all other clauses
             if clause is other_clause:
                 continue
-            elif (
+            if (
                 -variable in other_clause
-            ):  # Which have the opposite polarity of that variable in them
+            ):                                      # Which have the opposite polarity of that variable in them
                 other_clause_found = True
                 resolution = _make_resolution(
                     clause, other_clause, variable
-                )  # Such that their resolution
-                if not _is_tautology(resolution):  # Is a tautology
+                )                                   # Such that their resolution
+                if not _is_tautology(resolution):   # Is a tautology
                     blocked_default = False
                     break
         if blocked_default and other_clause_found:
@@ -180,20 +179,19 @@ def _is_pure_literal(clause_table: DPLLTable, variable: int) -> tuple[bool, int]
     for clause in clause_table:
         for literal in clause:
             if abs(literal) == abs(variable):
-                if positive_flag_set == 0:  # If this is the first encounter
+                if positive_flag_set == 0:      # If this is the first encounter
                     if literal == variable:
-                        positive_flag_set = 1  # This is only a positive
+                        positive_flag_set = 1   # This is only a positive
                     else:
                         positive_flag_set = -1  # This is only a negative
                 elif (
                     literal != variable * positive_flag_set
-                ):  # If this isn't the first encounter and there's opposite polarities
+                ):                              # If this isn't the first encounter and there's opposite polarities
                     return (False, 0)
 
     if positive_flag_set != 0:  # If there were no encounters
         return (True, positive_flag_set)
-    else:
-        return (False, 0)
+    return (False, 0)
 
 
 def _handle_tautologies(clause_table: DPLLTable) -> DPLLTable:
@@ -211,9 +209,9 @@ def _is_tautology(clause: DPLLClause) -> bool:
     """
     Checks if a clause has the same variables which are opposite to each other in polarity.
     """
-    for i in range(len(clause)):
-        for j in range(i + 1, len(clause)):
-            if clause[i] == -clause[j]:
+    for variable, i in enumerate(clause):
+        for other_variable, j in enumerate(clause[i + 1:], start=i + 1):
+            if variable == -other_variable:
                 return True
     return False
 
@@ -239,8 +237,7 @@ def _self_subsuming_resolution_recursive(clause_table: DPLLTable) -> DPLLTable:
 
     if clause_copy != clause_table:
         return _self_subsuming_resolution_recursive(clause_copy)
-    else:
-        return clause_table
+    return clause_table
 
 
 def _can_be_resolved(clause1: DPLLClause, clause2: DPLLClause) -> tuple[bool, int]:
@@ -273,7 +270,7 @@ def _resolve_clause_subsets(
     if set(resolved_clause) <= set(clause1):
         # print("Resolved", clause1, "from", clause1, ",", clause2, "to", resolved_clause)
         return clause1, resolved_clause
-    elif set(resolved_clause) <= set(clause2):
+    if set(resolved_clause) <= set(clause2):
         # print("Resolved", clause2, "from", clause1, ",", clause2, "to", resolved_clause)
         return clause2, resolved_clause
     return None

@@ -9,7 +9,7 @@ from type_defs import (
 )
 
 
-def cdcl(clause_table: CDCLTable, DecisionTrail: DecisionTrail) -> bool:
+def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
     # Make a dictionary from the table
     variable_to_clauses: dict[int, list[int]] = {}
     for i, clause in enumerate(clause_table.clauses):
@@ -18,10 +18,10 @@ def cdcl(clause_table: CDCLTable, DecisionTrail: DecisionTrail) -> bool:
             variable_to_clauses.setdefault(key, []).append(i)
 
     while True:  # Start solving
-        if not DecisionTrail:  # If we've just started solving
+        if not decision_trail:  # If we've just started solving
             current_level = 0
         else:
-            current_level = DecisionTrail[-1].level
+            current_level = decision_trail[-1].level
 
         found_unit_variable = _find_unit_variable(
             clause_table)  # Look for unit variables
@@ -33,11 +33,11 @@ def cdcl(clause_table: CDCLTable, DecisionTrail: DecisionTrail) -> bool:
             decision = Decision(_get_next_size_value(
                 clause_table), None, current_level + 1)
             # print(_get_next_size_value(clause_table))
-        DecisionTrail.append(decision)
+        decision_trail.append(decision)
 
         current_level = decision.level
         _evaluate_variable(
-            clause_table, DecisionTrail, variable_to_clauses
+            clause_table, decision_trail, variable_to_clauses
         )  # And start solving
 
         # Now see what the table has in it
@@ -54,26 +54,26 @@ def cdcl(clause_table: CDCLTable, DecisionTrail: DecisionTrail) -> bool:
                 set(x[0] for x in clause_table.clauses[false_index])
             )  # But if we can, look for the False clause
             learned_clause = convert_to_cdcl(
-                _learn_clause(false_clause, DecisionTrail)
+                _learn_clause(false_clause, decision_trail)
             )  # Derive a learned clause
             wipe_level = _second_highest_decision_level(
-                learned_clause, DecisionTrail
+                learned_clause, decision_trail
             )  # Backtrack to the second highest decision level
             _wipe_trail_and_table_after(
-                wipe_level, DecisionTrail, clause_table
+                wipe_level, decision_trail, clause_table
             )  # Reset the table from there onwards
             _update_learned_clause(
-                learned_clause, DecisionTrail, clause_table, variable_to_clauses
+                learned_clause, decision_trail, clause_table, variable_to_clauses
             )
 
 
-def _learn_clause(starter_clause: DPLLClause, DecisionTrail: DecisionTrail) -> DPLLClause:
-    current_level = DecisionTrail[-1].level
+def _learn_clause(starter_clause: DPLLClause, decision_trail: DecisionTrail) -> DPLLClause:
+    current_level = decision_trail[-1].level
     working_clause = starter_clause
 
     while True:
         variable_decisions = [
-            _get_variable_decision_level(x, DecisionTrail) for x in working_clause
+            _get_variable_decision_level(x, decision_trail) for x in working_clause
         ]
         if (
             variable_decisions.count(current_level) == 1
@@ -81,11 +81,11 @@ def _learn_clause(starter_clause: DPLLClause, DecisionTrail: DecisionTrail) -> D
             return working_clause
 
         simplified_trail = [abs(decision.variable)
-                            for decision in DecisionTrail]
+                            for decision in decision_trail]
         latest_cause = None
         for i, latest_decision in enumerate(simplified_trail[::-1]):
             if latest_decision in [abs(x) for x in working_clause]:
-                decision = DecisionTrail[-(i + 1)]
+                decision = decision_trail[-(i + 1)]
                 if decision.level == current_level and decision.cause_clause is not None:
                     latest_cause = decision.cause_clause
                     break
@@ -95,7 +95,7 @@ def _learn_clause(starter_clause: DPLLClause, DecisionTrail: DecisionTrail) -> D
 
 def _update_learned_clause(
     learned_clause: CDCLClause,
-    DecisionTrail: DecisionTrail,
+    decision_trail: DecisionTrail,
     clause_table: CDCLTable,
     variable_to_clauses: dict,
 ) -> None:
@@ -105,7 +105,7 @@ def _update_learned_clause(
     """
     for j, variable_set in enumerate(learned_clause):
         variable_name = variable_set[0]
-        for i, decision in enumerate(DecisionTrail):
+        for i, decision in enumerate(decision_trail):
             if abs(decision.variable) == abs(variable_name):
                 value_to_set = True if decision.variable / variable_name > 0 else False
                 learned_clause[j] = _set_value(variable_set, value_to_set)
@@ -120,7 +120,7 @@ def _update_learned_clause(
 
 
 def _second_highest_decision_level(
-    learned_clause: CDCLClause, DecisionTrail: DecisionTrail
+    learned_clause: CDCLClause, decision_trail: DecisionTrail
 ) -> int:
     """
     Arranges all the levels in the decision trail and gets the second highest.
@@ -128,37 +128,37 @@ def _second_highest_decision_level(
     """
     learned_clause = [x[0] for x in learned_clause]
     levels = sorted(
-        [_get_variable_decision_level(v, DecisionTrail)
+        [_get_variable_decision_level(v, decision_trail)
          for v in learned_clause],
         reverse=True,
     )
     if len(levels) < 2:
-        return DecisionTrail[-1].level - 1
+        return decision_trail[-1].level - 1
     return levels[1]
 
 
-def _get_variable_decision_level(variable: int, DecisionTrail: DecisionTrail) -> int:
+def _get_variable_decision_level(variable: int, decision_trail: DecisionTrail) -> int:
     """
     Given a variable, get its decision level from the trail.
     Can handle both polarities.
     """
-    for decision in DecisionTrail:
+    for decision in decision_trail:
         if abs(decision.variable) == abs(variable):
             return decision.level
     return -1
 
 
 def _wipe_trail_and_table_after(
-    level: int, DecisionTrail: DecisionTrail, clause_table: CDCLTable
+    level: int, decision_trail: DecisionTrail, clause_table: CDCLTable
 ) -> None:
     """
     Takes a level and wipes it out from the table, along with anything after it.
     """
     wiped = []
-    for i, decision in enumerate(DecisionTrail):
+    for i, decision in enumerate(decision_trail):
         if decision.level > level:
-            wiped = [d.variable for d in DecisionTrail[i:]]
-            del DecisionTrail[i:]
+            wiped = [d.variable for d in decision_trail[i:]]
+            del decision_trail[i:]
             break
     _undo_evaluations(clause_table, wiped)
 
@@ -224,9 +224,9 @@ def _evaluate_clause(clause: CDCLClause) -> bool | None:
 
 
 def _evaluate_variable(
-    clause_table: CDCLTable, DecisionTrail: DecisionTrail, variable_to_clauses: dict
+    clause_table: CDCLTable, decision_trail: DecisionTrail, variable_to_clauses: dict
 ) -> None:
-    decision = DecisionTrail[-1]
+    decision = decision_trail[-1]
     variable = decision.variable
     decision_polarity = variable > 0
 

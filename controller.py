@@ -8,7 +8,9 @@ from cdcl_processor import cdcl
 
 
 def run_dpll(cnf_path: str) -> None:
-    variables, clauses, clause_table = extract_numbers(cnf_path)
+    extracted_numbers = extract_numbers(cnf_path)
+    variables = extracted_numbers[0]
+    clause_table = extracted_numbers[2]
     clause_table = dpll_preprocessor(clause_table, variables)
     if not isinstance(clause_table, bool):
         print("SAT") if dpll(clause_table, variables, 1) else print("UNSAT")
@@ -17,7 +19,9 @@ def run_dpll(cnf_path: str) -> None:
 
 
 def run_cdcl(cnf_path: str) -> None:
-    variables, clauses, clause_table = extract_numbers(cnf_path)
+    extracted_numbers = extract_numbers(cnf_path)
+    variables = extracted_numbers[0]
+    clause_table = extracted_numbers[2]
     clause_table = dpll_preprocessor(clause_table, variables)
     if not isinstance(clause_table, bool):
         clause_table = convert_to_cdcl(clause_table)
@@ -39,7 +43,7 @@ def main():
         sys.exit(1)
 
     if algorithm not in ("DPLL", "CDCL"):
-        print(f"Choose DPLL or CDCL.")
+        print("Choose DPLL or CDCL.")
         sys.exit(1)
 
     start_time = time.perf_counter()
