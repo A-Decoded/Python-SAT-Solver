@@ -1,4 +1,9 @@
-from __future__ import annotations # This is apparently really important because runtime evaluation of complex types is bugged
+"""
+Contains type definitions for the DPLL and CDCL functions.
+"""
+
+# This is apparently really important because runtime evaluation of complex types is bugged
+from __future__ import annotations
 
 from typing import NamedTuple
 
@@ -15,7 +20,7 @@ It is a 2D array.
 """
 
 
-type CDCLVariable = tuple[int, bool|None]
+type CDCLVariable = tuple[int, bool | None]
 """
 A CDCL Variable is a tuple of:
 the name of the variable, with polarity,
@@ -27,6 +32,7 @@ type CDCLClause = list[CDCLVariable]
 A CDCL Clause is a list of variable tuples.
 """
 
+
 class CDCLTable(NamedTuple):
     """
     A CDCL Table is a tuple of:
@@ -34,7 +40,7 @@ class CDCLTable(NamedTuple):
     a "values" attribute at index 1, where values[i] is the evaluated value of clauses[i].
     """
     clauses: list[CDCLClause]
-    values: list[bool|None]
+    values: list[bool | None]
 
 
 class Decision:
@@ -43,10 +49,12 @@ class Decision:
     It is of form: +/- (variable)^(clause)_(decision level)
     +/- is the True/False value of the variable, represented mathematically
     """
-    def __init__ (self, variable: int, causeClause: DPLLClause|None = None, level: int = 0):
+
+    def __init__(self, variable: int, cause_clause: DPLLClause | None = None, level: int = 0):
         self.variable = variable
-        self.causeClause = causeClause
+        self.cause_clause = cause_clause
         self.level = level
+
 
 type DecisionTrail = list[Decision]
 """
