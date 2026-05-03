@@ -1,3 +1,7 @@
+"""
+Contains type definitions for the DPLL and CDCL functions.
+"""
+
 # This is apparently really important because runtime evaluation of complex types is bugged
 from __future__ import annotations
 

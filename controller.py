@@ -1,3 +1,8 @@
+"""
+General runner for the solver.
+Format is: python Controller.py <cnf_file> <DPLL|CDCL>
+"""
+
 import os
 import sys
 import time

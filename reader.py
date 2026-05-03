@@ -1,3 +1,7 @@
+"""
+Contains utility functions to read cnf files and convert between CDCL and DPLL formats.
+"""
+
 import copy
 
 from type_defs import CDCLTable, DPLLTable, DPLLClause, CDCLClause

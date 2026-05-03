@@ -1,3 +1,7 @@
+"""
+Contains the DPLL algorithm, a DPLL-based preprocessor, and their helper functions.
+"""
+
 import copy
 
 from type_defs import DPLLTable, DPLLClause

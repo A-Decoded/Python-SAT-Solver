@@ -1,3 +1,7 @@
+"""
+Contains the CDCL algorithm and all its helper functions.
+"""
+
 from reader import convert_to_cdcl
 from type_defs import (
     CDCLTable,
@@ -105,9 +109,10 @@ def _update_learned_clause(
     """
     for j, variable_set in enumerate(learned_clause):
         variable_name = variable_set[0]
-        for i, decision in enumerate(decision_trail):
+        for decision in decision_trail:
             if abs(decision.variable) == abs(variable_name):
-                value_to_set = True if decision.variable / variable_name > 0 else False
+                # It's true if these are the same polarity, false if not
+                value_to_set = decision.variable / variable_name > 0
                 learned_clause[j] = _set_value(variable_set, value_to_set)
 
     clause_table.clauses.append(learned_clause)
