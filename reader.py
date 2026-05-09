@@ -16,13 +16,12 @@ def extract_numbers(filepath: str) -> tuple[int, int, DPLLTable]:
     variables = 0
     clauses = 0
 
-    with open(filepath) as f:
+    with open(filepath, encoding='utf-8') as f:
         for line in f:
             line_variables = line.split()
             if line.startswith("c") or line.startswith("%") or line.startswith("0") or line.startswith("\n"):
-                continue
-            # Is this the p cnf line?
-            if line.startswith("p"):
+                continue                            # Is this one of the other formats for comments?
+            if line.startswith("p"):                # Is this the p cnf line?
                 # Get the number of variables
                 variables = int(line_variables[2])
                 # Get the number of clauses

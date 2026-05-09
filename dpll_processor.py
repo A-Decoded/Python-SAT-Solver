@@ -8,7 +8,8 @@ def dpll(clause_table: DPLLTable, variables: int, starting: int) -> bool:
     The core of the DPLL algorithm.
     """
     clause_table = _process_variable(
-        clause_table, starting, abs(starting) / starting)
+        clause_table, starting, abs(starting) / starting
+    )
     clause_table = _handle_unit_clauses_recursive(clause_table)
     clause_table = _handle_pure_literals(clause_table, variables)
 
@@ -45,26 +46,29 @@ def dpll_preprocessor(
     clause_table = []
     for clause in original_clause_table:
         normalized = sorted(list(set(clause)))
-        if normalized not in clause_table:  # Remove any duplicate clauses
+        if normalized not in clause_table:                                  # Remove any duplicate clauses
             clause_table.append(normalized)
 
-    comparing_table = copy.deepcopy(clause_table)  # Make a referential copy
-
+    # Make a referential copy
+    comparing_table = copy.deepcopy(clause_table)
+    # Process everything (super expensive)
     comparing_table = _handle_tautologies(comparing_table)
     comparing_table = _handle_unit_clauses_recursive(comparing_table)
     comparing_table = _handle_pure_literals(comparing_table, variables)
     comparing_table = _self_subsuming_resolution_recursive(comparing_table)
     comparing_table = _handle_blocked_clauses(comparing_table)
 
+    # If there's SAT or UNSAT, we're done
     if evaluator(comparing_table) is not None:
         return evaluator(comparing_table)
 
     if (
         comparing_table != clause_table
-    ):  # If the referential copy differs from what we have
+    ):                                                                      # Should we process this again?
         return dpll_preprocessor(comparing_table, variables)
 
     # print("Finished preprocessing")
+    # If not, return the processed table
     return comparing_table
 
 
@@ -73,23 +77,20 @@ def _process_variable(clause_table: DPLLTable, variable: int, polarity: int) -> 
     Non-recursively handles a single variable with linear propagation.
     """
     clause_copy = copy.deepcopy(clause_table)
-    for (
-        clause
-    ) in (
-        clause_table
-    ):  # We're doing a side-by-side evaluation against clause_table so there may be discrepancies
+    for clause in clause_table:
+        # We're doing a side-by-side evaluation against clause_table so there may be discrepancies
         for literal in clause:
             if abs(literal) == abs(variable):
                 if (
                     polarity * abs(variable) == literal
-                ):  # If this variable evaluates to true
-                    # print("Removing", clause)
-                    clause_copy.remove(clause)  # Remove the clause
-                else:  # If it evaluates to false
+                ):                                                      # If this variable evaluates to true
+                    # print("Removing", clause)                         # Remove the clause
+                    clause_copy.remove(clause)
+                else:                                                   # But if it evaluates to false
                     if clause in clause_copy:
                         clause_copy[clause_copy.index(clause)].remove(
                             literal
-                        )  # Just remove the variable
+                        )                                               # Then just remove the variable
 
     # pretty_print(clause_copy)
     return clause_copy
@@ -113,10 +114,11 @@ def _handle_blocked_clauses(clause_table: DPLLTable) -> DPLLTable:
 
 
 def _is_blocked_clause(clause_table: DPLLTable, clause: DPLLClause) -> bool:
-    for variable in clause:                         # There exists a variable in the clause
+    # A clause is said to be blocked if
+    for variable in clause:                         # There exists a certain variable in the clause
         other_clause_found = False
         blocked_default = True
-        for other_clause in clause_table:           # For all other clauses
+        for other_clause in clause_table:           # And if for all other clauses
             if clause is other_clause:
                 continue
             if (
@@ -125,7 +127,7 @@ def _is_blocked_clause(clause_table: DPLLTable, clause: DPLLClause) -> bool:
                 other_clause_found = True
                 resolution = _make_resolution(
                     clause, other_clause, variable
-                )                                   # Such that their resolution
+                )                                   # Their resolution
                 if not _is_tautology(resolution):   # Is a tautology
                     blocked_default = False
                     break
@@ -175,21 +177,23 @@ def _is_pure_literal(clause_table: DPLLTable, variable: int) -> tuple[bool, int]
     Checks if a variable in the clause table is pure.
     Returns 2 values, first is a boolean, second is +1 or -1 for the polarity of the variable, otherwise 0.
     """
-    positive_flag_set = 0  # A flag for checking if we encountered this
+    # A flag for checking if we encountered this
+    positive_flag_set = 0
     for clause in clause_table:
         for literal in clause:
             if abs(literal) == abs(variable):
                 if positive_flag_set == 0:      # If this is the first encounter
                     if literal == variable:
-                        positive_flag_set = 1   # This is only a positive
+                        positive_flag_set = 1   # This is only a positive literal
                     else:
-                        positive_flag_set = -1  # This is only a negative
+                        positive_flag_set = -1  # This is only a negative literal
                 elif (
                     literal != variable * positive_flag_set
                 ):                              # If this isn't the first encounter and there's opposite polarities
-                    return (False, 0)
+                    return (False, 0)           # It's not pure
 
-    if positive_flag_set != 0:  # If there were no encounters
+    if positive_flag_set != 0:                  # If there were no other encounters
+        # It's pure, the flag denotes its polarity
         return (True, positive_flag_set)
     return (False, 0)
 
@@ -250,7 +254,7 @@ def _can_be_resolved(clause1: DPLLClause, clause2: DPLLClause) -> tuple[bool, in
     for variable in clause1:
         if (
             -variable in clause2
-        ):  # If we find a common value of opposite polarity in the clauses
+        ):                                   # If we find a common value of opposite polarity in the clauses
             if common_value_found is False:  # And it's unique
                 common_value_found = True
                 common_value = variable

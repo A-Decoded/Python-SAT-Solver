@@ -10,59 +10,63 @@ from type_defs import (
 
 
 def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
-    # Make a dictionary from the table
+    # Make a lookup table from the table to reduce overhead
+    # Where key in the dictionary is a variable
+    # And it maps to the indexes of the clauses containing it
     variable_to_clauses: dict[int, list[int]] = {}
     for i, clause in enumerate(clause_table.clauses):
         for variable_set in clause:
             key = abs(variable_set[0])
             variable_to_clauses.setdefault(key, []).append(i)
 
-    while True:  # Start solving
-        if not decision_trail:  # If we've just started solving
-            current_level = 0
-        else:
+    # We're doing a while loop because recursive solutions hit the depth limit
+    while True:                                             # Start solving
+        if not decision_trail:                              # If we've just started solving
+            current_level = 0                               # We're at level 0
+        else:                                               # Otherwise look at what the trail says
             current_level = decision_trail[-1].level
 
         found_unit_variable = _find_unit_variable(
-            clause_table)  # Look for unit variables
-        if found_unit_variable is not None:
+            clause_table)                                   # Look for unit variables
+        if found_unit_variable is not None:                 # If we found one, handle it
             unit_var, unit_clause = found_unit_variable
             normalized_cause = [v[0] for v in unit_clause]
             decision = Decision(unit_var, normalized_cause, current_level)
-        else:  # Or just make a decision
+        else:                                               # If not, then just make a decision
             decision = Decision(_get_next_size_value(
                 clause_table), None, current_level + 1)
-            # print(_get_next_size_value(clause_table))
+
+        # Either way, record what we've done
         decision_trail.append(decision)
 
         current_level = decision.level
         _evaluate_variable(
             clause_table, decision_trail, variable_to_clauses
-        )  # And start solving
+        )                                                   # Now start solving
 
         # Now see what the table has in it
         table_value = _evaluate_table(clause_table)
-        if table_value is True:  # If it's full of True, we're done
-            return True
+        if table_value is True:                             # If table's full of True
+            return True                                     # We're SAT
         if table_value is False:
-            if current_level == 0:  # If it's False but we can't backtrack,
-                return False  # We're UNSAT
-            false_index = next(
+            if current_level == 0:                          # If there's a False but we can't backtrack,
+                return False                                # We're UNSAT
+            false_index = next(                             # But if we can backtrack, look for the False clause
                 (i for i, x in enumerate(clause_table.values) if x is False), None
             )
             false_clause = list(
                 set(x[0] for x in clause_table.clauses[false_index])
-            )  # But if we can, look for the False clause
-            learned_clause = convert_to_cdcl(
+            )
+            learned_clause = convert_to_cdcl(               # Derive a learned clause
                 _learn_clause(false_clause, decision_trail)
-            )  # Derive a learned clause
-            wipe_level = _second_highest_decision_level(
+            )
+            wipe_level = _second_highest_decision_level(    # Backtrack to the second highest decision level
                 learned_clause, decision_trail
-            )  # Backtrack to the second highest decision level
-            _wipe_trail_and_table_after(
+            )
+            _wipe_trail_and_table_after(                    # And wipe the newest level entirely
                 wipe_level, decision_trail, clause_table
-            )  # Reset the table from there onwards
-            _update_learned_clause(
+            )                                               # aka; reset the table from there onwards
+            _update_learned_clause(                         # And now bring the learned clause up to speed
                 learned_clause, decision_trail, clause_table, variable_to_clauses
             )
 
@@ -72,15 +76,15 @@ def _learn_clause(starter_clause: DPLLClause, decision_trail: DecisionTrail) -> 
     working_clause = starter_clause
 
     while True:
-        variable_decisions = [
+        variable_decisions = [                                      # Look through all decision levels
             _get_variable_decision_level(x, decision_trail) for x in working_clause
         ]
-        if (
+        if (                                                        # If there's only one occurance of the current level
             variable_decisions.count(current_level) == 1
-        ):  # We need only one variable of the current level to be in the learned clause
-            return working_clause
+        ):
+            return working_clause                                   # We're done
 
-        simplified_trail = [abs(decision.variable)
+        simplified_trail = [abs(decision.variable)                  # Simplify the trail to just variables first
                             for decision in decision_trail]
         latest_cause = None
         for i, latest_decision in enumerate(simplified_trail[::-1]):
@@ -124,8 +128,8 @@ def _second_highest_decision_level(
     learned_clause: CDCLClause, decision_trail: DecisionTrail
 ) -> int:
     """
-    Arranges all the levels in the decision trail and gets the second highest.
-    And if there's just one, then levels-1
+    Sees all the levels in the decision trail and gets the second highest.
+    And if there's just one level, then give us (level-1)
     """
     learned_clause = [x[0] for x in learned_clause]
     levels = sorted(
@@ -213,14 +217,14 @@ def _evaluate_clause(clause: CDCLClause) -> bool | None:
         variable_value = variable_set[1]
         if (
             variable_value is True
-        ):  # If we find a singular True, it's a True evaluation.
+        ):                          # If we find a singular True, the clause is True.
             return True
-        if variable_value is None:  # If we find a singular None, it cannot be False.
+        if variable_value is None:  # If we find a None, the clause cannot be False.
             false_flag = False
 
     return (
-        False if false_flag else None
         # If we haven't found any Nones or Trues, it must be False, otherwise None.
+        False if false_flag else None
     )
 
 
