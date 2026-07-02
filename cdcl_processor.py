@@ -17,7 +17,9 @@ def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
     for i, clause in enumerate(clause_table.clauses):
         for variable_set in clause:
             key = abs(variable_set[0])
-            variable_to_clauses.setdefault(key, []).append(i)
+            if key not in variable_to_clauses:
+                variable_to_clauses[key] = []
+            variable_to_clauses[key].append(i)
 
     # We're doing a while loop because recursive solutions hit the depth limit
     while True:                                             # Start solving
@@ -120,8 +122,9 @@ def _update_learned_clause(
 
     new_index = len(clause_table.clauses) - 1
     for variable_set in learned_clause:
-        variable_to_clauses.setdefault(
-            abs(variable_set[0]), []).append(new_index)
+        if abs(variable_set[0]) not in variable_to_clauses:
+            variable_to_clauses[abs(variable_set[0])] = []
+        variable_to_clauses[abs(variable_set[0])].append(new_index)
 
 
 def _second_highest_decision_level(

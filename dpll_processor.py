@@ -296,20 +296,7 @@ def _make_resolution(
 
 def _get_next_size_value(clause_table: DPLLTable) -> int:
     """
-    Heuristic to get the next value present in the CNF in the smallest clause.
+    Greedy heuristic to get the next value present in the CNF in the smallest clause.
     """
     clause_sorted = sorted(clause_table, key=len)
     return clause_sorted[0][0]
-
-
-def _get_next_value(current_value: int, clause_table: DPLLTable) -> int:
-    """
-    Heuristic to get the next available value present in the CNF.
-    """
-    check_value = abs(current_value) + 1
-    for clause in clause_table:
-        for variable in clause:
-            if check_value == abs(variable):
-                return check_value
-
-    return _get_next_value(check_value, clause_table)
