@@ -1,5 +1,5 @@
 """
-Format is: python Controller.py <cnf_file> <DPLL|CDCL>
+Format is: python controller.py <cnf_file> <DPLL|CDCL>
 """
 
 import os
@@ -36,7 +36,7 @@ def run_cdcl(cnf_path: str) -> None:
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python Controller.py <cnf_file> <DPLL|CDCL>")
+        print("Usage: python controller.py <cnf_file> <DPLL|CDCL>")
         sys.exit(1)
 
     cnf_path = sys.argv[1]

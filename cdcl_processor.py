@@ -21,6 +21,11 @@ def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
                 variable_to_clauses[key] = []
             variable_to_clauses[key].append(i)
 
+    vsids_scores: dict[int, int] = {
+        var: 0 for var in variable_to_clauses.keys()}
+
+    assignment_table: dict[int, bool] = {}
+
     # We're doing a while loop because recursive solutions hit the depth limit
     while True:                                             # Start solving
         if not decision_trail:                              # If we've just started solving
@@ -35,11 +40,13 @@ def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
             normalized_cause = [v[0] for v in unit_clause]
             decision = Decision(unit_var, normalized_cause, current_level)
         else:                                               # If not, then just make a decision
-            decision = Decision(_get_next_size_value(
-                clause_table), None, current_level + 1)
+            decision = Decision(_get_next_vsids_value(vsids_scores, assignment_table, []), None, current_level + 1)
 
         # Either way, record what we've done
         decision_trail.append(decision)
+
+        # And update it in the assignment table
+        assignment_table[abs(decision.variable)] = decision.variable > 0
 
         current_level = decision.level
         _evaluate_variable(
@@ -56,21 +63,29 @@ def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
             false_index = next(                             # But if we can backtrack, look for the False clause
                 (i for i, x in enumerate(clause_table.values) if x is False), None
             )
-            false_clause = list(
+            false_clause = list(                            # Get the false clause in DPLL form
                 set(x[0] for x in clause_table.clauses[false_index])
             )
+
             learned_clause = convert_to_cdcl(               # Derive a learned clause
                 _learn_clause(false_clause, decision_trail)
             )
+            for var in learned_clause:
+                # Update VSIDS scores for variables in learned clause
+                vsids_scores[abs(var[0])] += 1
+
             wipe_level = _second_highest_decision_level(    # Backtrack to the second highest decision level
                 learned_clause, decision_trail
             )
             _wipe_trail_and_table_after(                    # And wipe the newest level entirely
-                wipe_level, decision_trail, clause_table
+                wipe_level, decision_trail, clause_table, assignment_table
             )                                               # aka; reset the table from there onwards
             _update_learned_clause(                         # And now bring the learned clause up to speed
                 learned_clause, decision_trail, clause_table, variable_to_clauses
             )
+
+            for variable in vsids_scores.keys():            # Decay all VSIDS scores
+                vsids_scores[variable] *= 0.95
 
 
 def _learn_clause(starter_clause: DPLLClause, decision_trail: DecisionTrail) -> DPLLClause:
@@ -157,7 +172,7 @@ def _get_variable_decision_level(variable: int, decision_trail: DecisionTrail) -
 
 
 def _wipe_trail_and_table_after(
-    level: int, decision_trail: DecisionTrail, clause_table: CDCLTable
+    level: int, decision_trail: DecisionTrail, clause_table: CDCLTable, assignment_table: dict[int, bool]
 ) -> None:
     """
     Takes a level and wipes it out from the table, along with anything after it.
@@ -168,16 +183,20 @@ def _wipe_trail_and_table_after(
             wiped = [d.variable for d in decision_trail[i:]]
             del decision_trail[i:]
             break
-    _undo_evaluations(clause_table, wiped)
+    _undo_evaluations(clause_table, wiped, assignment_table)
 
 
-def _undo_evaluations(clause_table: CDCLTable, variables: list) -> None:
+def _undo_evaluations(clause_table: CDCLTable, variables: list, assignment_table: dict[int, bool]) -> None:
     """
     Takes a list of variables, and removes their evaluation from the clause table.
     """
     clause_variables = clause_table.clauses
     clause_values = clause_table.values
     variables = [abs(variable) for variable in variables]
+
+    for variable in variables:
+        assignment_table.pop(abs(variable), None)  # Remove the variable from the assignment table
+
     for i, clause in enumerate(clause_variables):
         reevaluate_clause = False
         for j, variable_set in enumerate(clause):
@@ -218,9 +237,7 @@ def _evaluate_clause(clause: CDCLClause) -> bool | None:
 
     for variable_set in clause:
         variable_value = variable_set[1]
-        if (
-            variable_value is True
-        ):                          # If we find a singular True, the clause is True.
+        if variable_value is True:  # If we find a singular True, the clause is True.
             return True
         if variable_value is None:  # If we find a None, the clause cannot be False.
             false_flag = False
@@ -234,6 +251,9 @@ def _evaluate_clause(clause: CDCLClause) -> bool | None:
 def _evaluate_variable(
     clause_table: CDCLTable, decision_trail: DecisionTrail, variable_to_clauses: dict
 ) -> None:
+    """
+    This will not update every variable in the clause table, it is lazy and stops after setting a True.
+    """
     decision = decision_trail[-1]
     variable = decision.variable
     decision_polarity = variable > 0
@@ -301,11 +321,29 @@ def _get_next_size_value(clause_table: CDCLTable) -> int:
     """
     Heuristic to get the next value present in the CNF in the smallest clause.
     """
-    unresolved = [c for c in clause_table.clauses if not any(
-        v[1] is True for v in c)]
-    clause_sorted = sorted(unresolved, key=lambda c: sum(
-        1 for v in c if v[1] is None))
+    # Get all unresolved clauses by looking for ones which don't have any variables set to True
+    unresolved = [c for c in clause_table.clauses if not any(v[1] is True for v in c)]
+    clause_sorted = sorted(unresolved, key=lambda c: sum(1 for v in c if v[1] is None))
     for clause in clause_sorted:
         for variable_set in clause:
             if variable_set[1] is None:
                 return variable_set[0]
+
+
+def _get_next_vsids_value(vsids_scores: dict[int, int], assignment_table: dict[int, bool], exclusion_list: list[int]) -> int:
+    """
+    Heuristic to get the next value present in the CNF based on VSIDS scores.
+    """
+    # Get rid of any variables that are in the exclusion list
+    vsids_scores = {k: v for k, v in vsids_scores.items() if k not in exclusion_list}
+
+    # Get the variable with the highest VSIDS score
+    next_variable = max(vsids_scores, key=lambda k: vsids_scores[k])
+    
+    # See if it's taken in the assignment table
+    if (next_variable in assignment_table) and (assignment_table[next_variable] is not None):
+        # If it is, add it to the exclusion list and try again
+        exclusion_list.append(next_variable)
+        return _get_next_vsids_value(vsids_scores, assignment_table, exclusion_list)
+    
+    return next_variable
