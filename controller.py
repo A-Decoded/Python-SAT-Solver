@@ -17,7 +17,7 @@ def run_dpll(cnf_path: str) -> None:
     clause_table = extracted_numbers[2]
     clause_table = dpll_preprocessor(clause_table, variables)
     if not isinstance(clause_table, bool):
-        print("SAT") if dpll(clause_table, variables, 1) else print("UNSAT")
+        print("SAT") if dpll(clause_table, variables, 0) else print("UNSAT")
     else:
         print("SAT") if clause_table else print("UNSAT")
 

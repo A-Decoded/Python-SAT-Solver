@@ -33,12 +33,11 @@ def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
         else:                                               # Otherwise look at what the trail says
             current_level = decision_trail[-1].level
 
-        found_unit_variable = _find_unit_variable(
-            clause_table)                                   # Look for unit variables
-        if found_unit_variable is not None:                 # If we found one, handle it
+        found_unit_variable = _find_unit_variable(clause_table)
+        if found_unit_variable is not None:                 # If we found a unit variable, handle it
             unit_var, unit_clause = found_unit_variable
-            normalized_cause = [v[0] for v in unit_clause]
-            decision = Decision(unit_var, normalized_cause, current_level)
+            normalized_clause = [v[0] for v in unit_clause]
+            decision = Decision(unit_var, normalized_clause, current_level)
         else:                                               # If not, then just make a decision
             decision = Decision(_get_next_vsids_value(vsids_scores, assignment_table, []), None, current_level + 1)
 
@@ -70,8 +69,7 @@ def cdcl(clause_table: CDCLTable, decision_trail: DecisionTrail) -> bool:
             learned_clause = convert_to_cdcl(               # Derive a learned clause
                 _learn_clause(false_clause, decision_trail)
             )
-            for var in learned_clause:
-                # Update VSIDS scores for variables in learned clause
+            for var in learned_clause:                      # Update VSIDS scores for variables in learned clause
                 vsids_scores[abs(var[0])] += 1
 
             wipe_level = _second_highest_decision_level(    # Backtrack to the second highest decision level
@@ -96,9 +94,7 @@ def _learn_clause(starter_clause: DPLLClause, decision_trail: DecisionTrail) -> 
         variable_decisions = [                                      # Look through all decision levels
             _get_variable_decision_level(x, decision_trail) for x in working_clause
         ]
-        if (                                                        # If there's only one occurance of the current level
-            variable_decisions.count(current_level) == 1
-        ):
+        if variable_decisions.count(current_level) == 1:            # If there's only one occurance of the current level
             return working_clause                                   # We're done
 
         simplified_trail = [abs(decision.variable)                  # Simplify the trail to just variables first
@@ -210,21 +206,15 @@ def _undo_evaluations(clause_table: CDCLTable, variables: list, assignment_table
             # print("Unevaluated clause to", clause_values[i])
 
 
-def _evaluate_table(clause_table: CDCLTable, lazy: bool = True) -> bool | None:
+def _evaluate_table(clause_table: CDCLTable) -> bool | None:
     """
-    Evaluates the entire clause table.
-    Has a lazy flag (automatically enabled).
-    Disable lazy flag if you want to evaluate every clause (computationally expensive.)
+    Evaluates the clause table lazily by looking at its value section.
+    Does not actually evaluate everything.
     """
-    clause_values = clause_table.values
-    if not lazy:
-        clause_variables = clause_table.clauses
-        for i, clause in enumerate(clause_variables):
-            clause_values[i] = _evaluate_clause(clause)
 
-    if False in clause_values:
+    if False in clause_table.values:
         return False
-    if None in clause_values:
+    if None in clause_table.values:
         return None
     return True
 
@@ -290,9 +280,8 @@ def _resolve_clauses(clause1: DPLLClause, clause2: DPLLClause) -> DPLLClause:
     full_variables = set(clause1 + clause2)
 
     for variable in full_variables:
-        if ((variable in clause1) and (-variable in clause2)) or (
-            (-variable in clause1) and (variable in clause2)
-        ):
+        if ((variable in clause1) and (-variable in clause2)
+        )or((-variable in clause1) and (variable in clause2)):
             variables_to_resolve.append(variable)
 
     for variable in variables_to_resolve:

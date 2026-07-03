@@ -7,9 +7,7 @@ def dpll(clause_table: DPLLTable, variables: int, starting: int) -> bool:
     """
     The core of the DPLL algorithm.
     """
-    clause_table = _process_variable(
-        clause_table, starting, abs(starting) / starting
-    )
+    clause_table = _process_variable(clause_table, starting)
     clause_table = _handle_unit_clauses_recursive(clause_table)
     clause_table = _handle_pure_literals(clause_table, variables)
 
@@ -17,10 +15,9 @@ def dpll(clause_table: DPLLTable, variables: int, starting: int) -> bool:
         return evaluator(clause_table)
 
     next_value = _get_next_size_value(clause_table)
-    # nextvalue = _get_next_value(starting, clause_table)
-    return dpll(copy.deepcopy(clause_table), variables, next_value) or dpll(
-        copy.deepcopy(clause_table), variables, -next_value
-    )
+
+    return dpll(copy.deepcopy(clause_table), variables, next_value
+      ) or dpll(copy.deepcopy(clause_table), variables, -next_value)
 
 
 def evaluator(clause_table: DPLLTable) -> bool | None:
@@ -62,9 +59,8 @@ def dpll_preprocessor(
     if evaluator(comparing_table) is not None:
         return evaluator(comparing_table)
 
-    if (
-        comparing_table != clause_table
-    ):                                                                      # Should we process this again?
+    # If the table has changed, call the preprocessor again
+    if comparing_table != clause_table:
         return dpll_preprocessor(comparing_table, variables)
 
     # print("Finished preprocessing")
@@ -72,27 +68,32 @@ def dpll_preprocessor(
     return comparing_table
 
 
-def _process_variable(clause_table: DPLLTable, variable: int, polarity: int) -> DPLLTable:
+def _process_variable(clause_table: DPLLTable, variable: int) -> DPLLTable:
     """
     Non-recursively handles a single variable with linear propagation.
     """
     clause_copy = copy.deepcopy(clause_table)
-    for clause in clause_table:
-        # We're doing a side-by-side evaluation against clause_table so there may be discrepancies
-        for literal in clause:
-            if abs(literal) == abs(variable):
-                if (
-                    polarity * abs(variable) == literal
-                ):                                                      # If this variable evaluates to true
-                    # print("Removing", clause)                         # Remove the clause
-                    clause_copy.remove(clause)
-                else:                                                   # But if it evaluates to false
-                    if clause in clause_copy:
-                        clause_copy[clause_copy.index(clause)].remove(
-                            literal
-                        )                                               # Then just remove the variable
+    clauses_to_remove = []
 
-    # pretty_print(clause_copy)
+    for i, clause in enumerate(clause_table):
+        caught_true = False
+        variables_to_remove = []
+
+        for literal in clause:
+            if variable == literal:                                 # If this variable evaluates to true
+                caught_true = True                                  # It's a tautology
+                clauses_to_remove.append(clause)                    # Add true clauses to the removal list
+                break
+            elif variable == -literal:                              # But if it evaluates to false
+                variables_to_remove.append(literal)                 # Remove the literal from the clause
+
+        if not caught_true:                                         # If the clause isn't a tautology
+            for literal in variables_to_remove:                     # Remove false literals from it
+                clause_copy[i].remove(literal)
+
+    for clause in clauses_to_remove:
+        clause_copy.remove(clause)
+
     return clause_copy
 
 
@@ -121,9 +122,7 @@ def _is_blocked_clause(clause_table: DPLLTable, clause: DPLLClause) -> bool:
         for other_clause in clause_table:           # And if for all other clauses
             if clause is other_clause:
                 continue
-            if (
-                -variable in other_clause
-            ):                                      # Which have the opposite polarity of that variable in them
+            if -variable in other_clause:           # Which have the opposite polarity of that variable in them
                 other_clause_found = True
                 resolution = _make_resolution(
                     clause, other_clause, variable
@@ -154,10 +153,7 @@ def _handle_unit_clauses(clause_table: DPLLTable) -> DPLLTable:
     """
     for clause in clause_table:
         if len(clause) == 1:
-            # print("Handling unit clause", clause)
-            value = clause[0]
-            polarity = value / abs(value)
-            clause_table = _process_variable(clause_table, value, polarity)
+            clause_table = _process_variable(clause_table, clause[0])
 
     return clause_table
 
@@ -166,8 +162,7 @@ def _handle_pure_literals(clause_table: DPLLTable, variables: int) -> DPLLTable:
     for variable in range(1, variables + 1):
         is_pure, polarity = _is_pure_literal(clause_table, variable)
         if is_pure:
-            # print("Handling pure literal", variable)
-            clause_table = _process_variable(clause_table, variable, polarity)
+            clause_table = _process_variable(clause_table, variable * polarity)
 
     return clause_table
 
@@ -214,8 +209,7 @@ def _is_tautology(clause: DPLLClause) -> bool:
     Checks if a clause has the same variables which are opposite to each other in polarity.
     """
     for i, variable in enumerate(clause):
-        for other_variable_enum in enumerate(clause[i + 1:], start=i + 1):
-            other_variable = other_variable_enum[1]
+        for other_variable in clause[i + 1:]:
             if variable == -other_variable:
                 return True
     return False
@@ -252,9 +246,7 @@ def _can_be_resolved(clause1: DPLLClause, clause2: DPLLClause) -> tuple[bool, in
     common_value_found = False
     common_value = 0
     for variable in clause1:
-        if (
-            -variable in clause2
-        ):                                   # If we find a common value of opposite polarity in the clauses
+        if -variable in clause2:             # If we find a common value of opposite polarity in the clauses
             if common_value_found is False:  # And it's unique
                 common_value_found = True
                 common_value = variable
@@ -273,10 +265,8 @@ def _resolve_clause_subsets(
     resolved_clause = _make_resolution(clause1, clause2, value)
 
     if set(resolved_clause) <= set(clause1):
-        # print("Resolved", clause1, "from", clause1, ",", clause2, "to", resolved_clause)
         return clause1, resolved_clause
     if set(resolved_clause) <= set(clause2):
-        # print("Resolved", clause2, "from", clause1, ",", clause2, "to", resolved_clause)
         return clause2, resolved_clause
     return None
 
