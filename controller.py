@@ -51,11 +51,10 @@ def main():
         print("Choose DPLL or CDCL")
         sys.exit(1)
 
+    start_time = time.perf_counter()
     if algorithm == "DPLL":
-        start_time = time.perf_counter()
         print("SAT") if run_dpll(cnf_path) else print("UNSAT")
-    else:
-        start_time = time.perf_counter()
+    elif algorithm == "CDCL":
         print("SAT") if run_cdcl(cnf_path) else print("UNSAT")
     end_time = time.perf_counter()
 
