@@ -36,11 +36,12 @@ def run_cdcl(cnf_path: str) -> None:
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python controller.py <cnf_file> <DPLL|CDCL>")
+        print("Usage: python controller.py <cnf_file> {DPLL|CDCL} [--timer]")
         sys.exit(1)
 
     cnf_path = sys.argv[1]
     algorithm = sys.argv[2].upper()
+    timer_flag = "--timer" in sys.argv
 
     if not os.path.isfile(cnf_path):
         print(f"File not found: {cnf_path}.")
@@ -58,7 +59,8 @@ def main():
         print("SAT") if run_cdcl(cnf_path) else print("UNSAT")
     end_time = time.perf_counter()
 
-    print(f"{algorithm} Time: {end_time - start_time}")
+    if timer_flag:
+        print(f"{algorithm} Time: {end_time - start_time}")
 
 
 if __name__ == "__main__":

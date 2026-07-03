@@ -38,7 +38,7 @@ def evaluator(clause_table: DPLLTable) -> bool | None:
 
 def dpll_preprocessor(original_clause_table: DPLLTable, variables: int) -> bool | DPLLTable:
     """
-    Recursively preprocesses the table. Handles pure literals, unit and tautological clauses.
+    Preprocesses the table. Handles pure literals, unit and tautological clauses.
     """
     # print("Preprocessing...")
 
@@ -48,31 +48,32 @@ def dpll_preprocessor(original_clause_table: DPLLTable, variables: int) -> bool 
         if normalized not in clause_table:                                  # Remove any duplicate clauses
             clause_table.append(normalized)
 
-    # Make a referential copy
-    comparing_table = copy.deepcopy(clause_table)
-    # Process everything (super expensive)
-    comparing_table = _handle_tautologies(comparing_table)
-    comparing_table = _handle_unit_clauses_recursive(comparing_table)
-    comparing_table = _handle_pure_literals(comparing_table, variables)
-    comparing_table = _self_subsuming_resolution_recursive(comparing_table)
-    comparing_table = _handle_blocked_clauses(comparing_table)
+    while True:
+        # Make a referential copy
+        comparing_table = copy.deepcopy(clause_table)
+        # Process everything (super expensive)
+        comparing_table = _handle_tautologies(comparing_table)
+        comparing_table = _handle_unit_clauses_recursive(comparing_table)
+        comparing_table = _handle_pure_literals(comparing_table, variables)
+        comparing_table = _self_subsuming_resolution_recursive(comparing_table)
+        comparing_table = _handle_blocked_clauses(comparing_table)
 
-    # If there's SAT or UNSAT, we're done
-    if evaluator(comparing_table) is not None:
-        return evaluator(comparing_table)
+        # If there's SAT or UNSAT, we're done
+        if evaluator(comparing_table) is not None:
+            return evaluator(comparing_table)
 
-    # If the table has changed, call the preprocessor again
-    if comparing_table != clause_table:
-        return dpll_preprocessor(comparing_table, variables)
+        # If the table has changed, go through the process again
+        if comparing_table != clause_table:
+            clause_table = comparing_table
+            continue
 
-    # print("Finished preprocessing")
-    # If not, return the processed table
-    return comparing_table
+        # If not, return the processed table
+        return comparing_table
 
 
 def _process_variable(clause_table: DPLLTable, variable: int) -> DPLLTable:
     """
-    Non-recursively handles a single variable with linear propagation.
+    Processes a single variable with linear propagation.
     """
     clause_copy = copy.deepcopy(clause_table)
     clauses_to_remove = []
