@@ -1,4 +1,0 @@
-[MAIN]
-# Disabling "missing module/function docstring", and "too few public methods".
-disable=C0114, C0116, R0903
-max-line-length=120
