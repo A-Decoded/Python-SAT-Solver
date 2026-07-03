@@ -6,9 +6,9 @@ import os
 import sys
 import time
 
-from reader import extract_numbers, convert_to_cdcl
-from dpll_processor import dpll, dpll_preprocessor
-from cdcl_processor import cdcl
+from src.reader import extract_numbers, convert_to_cdcl
+from src.dpll_processor import dpll, dpll_preprocessor
+from src.cdcl_processor import cdcl
 
 
 def run_dpll(cnf_path: str) -> None:
@@ -17,9 +17,9 @@ def run_dpll(cnf_path: str) -> None:
     clause_table = extracted_numbers[2]
     clause_table = dpll_preprocessor(clause_table, variables)
     if not isinstance(clause_table, bool):
-        print("SAT") if dpll(clause_table, variables, 0) else print("UNSAT")
+        return True if dpll(clause_table, variables, 0) else False
     else:
-        print("SAT") if clause_table else print("UNSAT")
+        return True if clause_table else False
 
 
 def run_cdcl(cnf_path: str) -> None:
@@ -29,9 +29,9 @@ def run_cdcl(cnf_path: str) -> None:
     clause_table = dpll_preprocessor(clause_table, variables)
     if not isinstance(clause_table, bool):
         clause_table = convert_to_cdcl(clause_table)
-        print("SAT") if cdcl(clause_table, []) else print("UNSAT")
+        return True if cdcl(clause_table, []) else False
     else:
-        print("SAT") if clause_table else print("UNSAT")
+        return True if clause_table else False
 
 
 def main():
@@ -47,14 +47,15 @@ def main():
         sys.exit(1)
 
     if algorithm not in ("DPLL", "CDCL"):
-        print("Choose DPLL or CDCL.")
+        print("Choose DPLL or CDCL")
         sys.exit(1)
 
-    start_time = time.perf_counter()
     if algorithm == "DPLL":
-        run_dpll(cnf_path)
+        start_time = time.perf_counter()
+        print("SAT") if run_dpll(cnf_path) else print("UNSAT")
     else:
-        run_cdcl(cnf_path)
+        start_time = time.perf_counter()
+        print("SAT") if run_cdcl(cnf_path) else print("UNSAT")
     end_time = time.perf_counter()
 
     print(f"{algorithm} Time: {end_time - start_time}")
